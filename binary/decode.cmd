@@ -1,0 +1,1 @@
+rleimager.exe -d 5 -m 255 < image.rle > image.raw
