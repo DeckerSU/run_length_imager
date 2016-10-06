@@ -221,6 +221,50 @@ void decode_rgb24_rle(unsigned int m, unsigned long long int o)
     }
 }
 
+
+void decode_bgr24_rle_qualcomm(unsigned int m, unsigned long long int o)
+{
+
+    unsigned char repeats, data[4];
+	unsigned long color;
+	unsigned char repeat_run;
+
+	if (o != 0){
+		fseek(stdin, o, SEEK_SET);
+	}
+
+    while(read(0, data, 4) == 4){
+
+		repeat_run = data[0] & 0x80;
+		
+		
+		if (repeat_run) {
+			if (((data[0] & 0x7F) + 1) > m){
+				continue;
+			}
+			
+			// color = ((data[1]) | (data[2] << 8) | (data[3]) << 16);
+			color = ((data[3]) | (data[2] << 8) | (data[1]) << 16);
+			for (repeats = 0;repeats < ((data[0] & 0x7F) + 1); repeats++){
+				write(1, &color, 3);
+			}
+		} else {
+			
+			// color = ((data[1]) | (data[2] << 8) | (data[3]) << 16);
+			color = ((data[3]) | (data[2] << 8) | (data[1]) << 16);
+			write(1, &color, 3);
+			
+			for (repeats = 0;repeats < (data[0] & 0x7F); repeats++){
+				 read(0, &data[1], 3);
+				 // color = ((data[1]) | (data[2] << 8) | (data[3]) << 16);
+				 color = ((data[3]) | (data[2] << 8) | (data[1]) << 16);
+				 
+				 write(1, &color, 3);
+			}
+		}
+    }
+}
+
 void decode_rgbx32_rle(unsigned long int m, unsigned long long int o)
 {
 	unsigned long repeats;
@@ -316,6 +360,7 @@ int usage(void){
 	fprintf(stderr, "\n\n\nUsage:\n\nrlimager.exe ([-e] [2-4] | [-d] [2-4] [-m] [max run] [-o] [offset]) < input_file > output_file\n\n");
 	fprintf(stderr, "Mandatory, one or the other\n\n");
 	fprintf(stderr, "-d (2-4)		Run Length Decode input_file from 2, 3, or 4 byte color pattern\n");
+	fprintf(stderr, "-d (5)			Decode input_file from RLE encoded RAW BGR24 format // [+] Decker\n");
 	fprintf(stderr, "-e (2-4)		Run Length Encode input_file to 2, 3, or 4 byte color pattern\n");
 	fprintf(stderr, "-j (output root name)	Extract Jpegs from file.  Output name can include a full path.\n");
 	fprintf(stderr, "-z (skip) -o (offset)	Zero every (skip) bytes, starting with (offset)\n\n");
@@ -409,7 +454,7 @@ int main(int argc, char **argv)
 			zeroBytes(offset, zeroByte, inputFile);
 			return(0);
 
-	} else if ((decode_opt > 1) && (decode_opt < 5)){
+	} else if ((decode_opt > 1) && (decode_opt < 6)){
 
 			if (encode_opt != 0){
 				usage();
@@ -440,6 +485,15 @@ int main(int argc, char **argv)
 					}
 				fprintf(stderr, "Maximun pixel run set at %lld\n",maxrun);
 				decode_rgbx32_rle(maxrun, offset);
+				return(0);
+			}
+			
+			if (decode_opt == 5){
+					if (maxrun == 0){
+						maxrun = 0xFF;
+					}
+				fprintf(stderr, "Maximum pixel run set at %d\n",maxrun);
+				decode_bgr24_rle_qualcomm(maxrun, offset);
 				return(0);
 			}
 
